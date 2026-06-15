@@ -834,7 +834,7 @@ We are looking for a Senior Backend Engineer proficient in Python, AWS, Docker, 
   });
 
   // ── Analyze ──────────────────────────────────────────────────────────────
-  async function analyzeResume() {
+  function analyzeResume() {
     const btn = document.getElementById('analyzeBtn');
     const errorBox = document.getElementById('errorBox');
     const results = document.getElementById('results');
@@ -851,23 +851,35 @@ We are looking for a Senior Backend Engineer proficient in Python, AWS, Docker, 
     btn.classList.add('loading');
     btn.disabled = true;
 
-    try {
-      const fd = new FormData();
-      fd.append('resume', file);
-      fd.append('job_description', jd);
+    const fd = new FormData();
+    fd.append('resume', file);
+    fd.append('job_description', jd);
 
-      const res  = await fetch('/api/analyze', { method: 'POST', body: fd });
-      const data = await res.json();
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', 'http://localhost:8000/api/analyze');
 
-      if (!res.ok) throw new Error(data.detail || 'Analysis failed.');
-
-      renderResults(data);
-    } catch (err) {
-      showError(err.message);
-    } finally {
+    xhr.onload = function () {
       btn.classList.remove('loading');
       btn.disabled = false;
-    }
+      try {
+        const data = JSON.parse(xhr.responseText);
+        if (xhr.status !== 200) {
+          showError(data.detail || 'Analysis failed.');
+        } else {
+          renderResults(data);
+        }
+      } catch (e) {
+        showError('Server returned an unexpected response.');
+      }
+    };
+
+    xhr.onerror = function () {
+      btn.classList.remove('loading');
+      btn.disabled = false;
+      showError('Cannot connect to server. Make sure python main.py is running on port 8000.');
+    };
+
+    xhr.send(fd);
   }
 
   function showError(msg) {
